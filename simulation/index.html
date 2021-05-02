@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+		</style>
+	</head>
+	<body>	
+		<script id="basicShader">
+			uniform vec2 dimensions;
+			uniform sampler2D smokeTexture;
+			uniform vec2 mousePos;
+			void main() {
+				// vec3 mousePos = vec2(0,0,0.1);
+				vec2 pixel = gl_FragCoord.xy / dimensions.xy;
+				gl_FragColor = texture2D( smokeTexture, pixel );
+	
+				// distance from current point to where mouse is
+				float dist = distance(mousePos.xy,gl_FragCoord.xy);
+
+				gl_FragColor.rgb += max(15.0-dist,0.0);
+	
+			 }
+			 
+		</script>
+		<script src="js/three.min.js"></script>
+		
+		<script src="js/main.js"></script>
+		<script src="js/mouse.js"></script>
+	</body>
+</html>
