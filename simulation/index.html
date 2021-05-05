@@ -11,69 +11,41 @@
 		uniform vec2 res;//The width and height of our screen
 		uniform sampler2D bufferTexture;//Our input texture
 		uniform vec3 smokeSource;//The x,y are the posiiton. The z is the power/density
-		uniform float time;
-		float pixel_change; 
 		void main() {
 	        vec2 pixel = gl_FragCoord.xy / res.xy;
+	        gl_FragColor = texture2D( bufferTexture, pixel );
+
 	        //Get the distance of the current pixel from the smoke source
 	        float dist = distance(smokeSource.xy,gl_FragCoord.xy);
-	        //Get the color of the current pixel
-			gl_FragColor = texture2D( bufferTexture, pixel );
-			
-			
-
 	        //Generate smoke when mouse is pressed
-			gl_FragColor.rgb += smokeSource.z * max(15.0-dist,0.0);
-			// gl_FragColor.rgb *= vec4(0.618,0.962,1.000,9.000);
-
-			
-		
-		
-
-	        //Smoke diffuse
+			gl_FragColor.r += smokeSource.z * max(15.0-dist,0.0);
+      gl_FragColor.g += .2*smokeSource.z * max(15.0-dist,0.0);
+      gl_FragColor.b += .3* smokeSource.z * max(15.0-dist,0.0);
+  
+     //Smoke diffuse
 	        float xPixel = 1.0/res.x;//The size of a single pixel
 	        float yPixel = 1.0/res.y;
-			vec4 rightColor = texture2D(bufferTexture,vec2(pixel.x+xPixel,pixel.y));
-			
-			vec4 leftColor = texture2D(bufferTexture,vec2(pixel.x-xPixel,pixel.y));
-			
-			vec4 upColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y+yPixel));
-		
-			vec4 downColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y-yPixel));
-			
-	        //Handle the bottom boundary
-		 	if(pixel.y <= yPixel){
-		 		downColor.rgb = vec3(0.0);
-		 	}
-	        //Diffuse equation
-			float factor1 = 8.0 * 0.016 * (leftColor.r*2.0 + rightColor.r + downColor.r + upColor.r*2.01  - 6.0*gl_FragColor.r);
-			// float factor2 = 8.0 * 0.016 * (leftColor.g*2.0 + rightColor.g + downColor.g + upColor.g*2.01- 6.0*gl_FragColor.g);
-			// float factor3 = 8.0 * 0.016 * (leftColor.b*2.0 + rightColor.b + downColor.b + upColor.b*2.01 - 4.0*gl_FragColor.b);
-	
+	        vec4 rightColor = texture2D(bufferTexture,vec2(pixel.x+xPixel,pixel.y));
+	        vec4 leftColor = texture2D(bufferTexture,vec2(pixel.x-xPixel,pixel.y));
+	        vec4 upColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y+yPixel));
+	        vec4 downColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y-yPixel));
+//Diffuse equation
+	       float factor1 = 8.0 * 0.016 * (leftColor.r*2.0 + rightColor.r + downColor.r + upColor.r*2.01  - 6.0*gl_FragColor.r);
+			float factor2 = 8.0 * 0.016 * (leftColor.g*2.0 + rightColor.g + downColor.g + upColor.g*2.01- 6.0*gl_FragColor.g);
+			float factor3 = 8.0 * 0.016 * (leftColor.b*2.0 + rightColor.b + downColor.b + upColor.b*2.01 - 6.0*gl_FragColor.b);
+		 
+	        //Account for low precision of texels
 	        float minimum = 0.003;
-			if(factor1 >= -minimum && factor1 < 0.0) {
-				factor1 = -minimum;
-			}
-			// if(factor2 >= -minimum && factor2 < 0.0) {
-			// 	factor2 = -minimum;
-			// }
-			// if(factor3 >= -minimum && factor3 < 0.0) {
-			// 	factor3 = -minimum;
-			// }
+			if(factor1 >= -minimum && factor1 < 0.0) factor1 = -minimum;
+      if(factor2 >= -minimum && factor2 < 0.0) factor2 = -minimum;
+      if(factor3 >= -minimum && factor3 < 0.0) factor3 = -minimum;
 
-			gl_FragColor.rgb += factor1;
-			
-
-			
-
-			// leftColor.rgb = vec3(0.0, 0.0, 0.0); 
-			// rightColor.rgb = vec3(0.0, 0.0, 0.0); 
-			// downColor.rgb = vec3(0.0, 0.0, 0.0); 
-			// upColor.rgb = vec3(0.0, 0.0, 0.0); 
-		
-		 	
+			gl_FragColor.r += factor1;
+      gl_FragColor.g += factor2;
+      gl_FragColor.b += factor3;
 		 }
 	</script>
+	
 	<script>
 		//@author Omar Shehata. 2015.
 		//We are loading the Three.js library from the cdn here: http://cdnjs.com/libraries/three.js/
