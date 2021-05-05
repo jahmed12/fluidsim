@@ -160,8 +160,8 @@
 			
 			bufferScene = new THREE.Scene();
 			//Create 2 buffer textures
-			textureA = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
-			textureB = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter} );
+			textureA = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.NearestMipmapNearestFilter, magFilter: THREE.NearestMipmapNearestFilter});
+			textureB = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.NearestMipmapNearestFilter, magFilter: THREE.NearestMipmapNearestFilter} );
 			//Pass textureA to shader
 			bufferMaterial = new THREE.ShaderMaterial( {
 				uniforms: {
@@ -187,6 +187,7 @@
 
 			//Draw textureB to screen 
 			finalMaterial =  new THREE.MeshBasicMaterial({map: textureB});
+			
 			quad = new THREE.Mesh( plane, finalMaterial );
 			scene.add(quad);
 		}
