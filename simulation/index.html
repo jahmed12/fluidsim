@@ -22,7 +22,8 @@
 		uniform float south;
 		uniform float east;
 		uniform float west;
-		uniform float thicc;
+		uniform float diffusion;
+		uniform float radius;
 		void main() {
 	        vec2 pixel = gl_FragCoord.xy / res.xy;
 	        gl_FragColor = texture2D( bufferTexture, pixel );
@@ -32,10 +33,9 @@
 	        float dist = distance(smokeSource.xy,gl_FragCoord.xy);
 			//Generate smoke when mouse is pressed
 			
-			gl_FragColor.r += red*smokeSource.z * max(15.0-dist,0.0);
-			gl_FragColor.g += green*smokeSource.z * max(15.0-dist,0.0);
-			gl_FragColor.b += blue*smokeSource.z * max(15.0-dist,0.0);
-		
+			gl_FragColor.r += red*smokeSource.z * max(radius-dist,0.0);
+			gl_FragColor.g += green*smokeSource.z * max(radius-dist,0.0);
+			gl_FragColor.b +=blue*smokeSource.z * max(radius-dist,0.0);
   
      //Smoke diffuse
 	        float xPixel = 1.0/res.x;//The size of a single pixel
@@ -45,9 +45,10 @@
 	        vec4 upColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y+yPixel));
 	        vec4 downColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y-yPixel));
 //Diffuse equation
-	       	float factor1 = thicc * 0.016 * (leftColor.r*east+ rightColor.r*west + downColor.r*north + upColor.r*south  - (east+north+south+west)*gl_FragColor.r);
-			float factor2 = thicc * 0.016 * (leftColor.g*east + rightColor.g*west + downColor.g*north + upColor.g*south- (east+north+south+west)*gl_FragColor.g);
-			float factor3 = thicc* 0.016 * (leftColor.b*east + rightColor.b*west + downColor.b*north + upColor.b*south - (east+north+south+west)*gl_FragColor.b);
+			float sum = (east + west + north + south);
+	       	float factor1 = diffusion * 0.016 * (leftColor.r*east/sum+ rightColor.r*west/sum + downColor.r*north/sum + upColor.r*south/sum  - (east+north+south+west)/sum*gl_FragColor.r);
+			float factor2 = diffusion * 0.016 * (leftColor.g*east/sum + rightColor.g*west/sum + downColor.g*north/sum + upColor.g*south/sum- (east+north+south+west)/sum*gl_FragColor.g);
+			float factor3 = diffusion* 0.016 * (leftColor.b*east/sum + rightColor.b*west/sum + downColor.b*north/sum + upColor.b*south/sum - (east+north+south+west)/sum*gl_FragColor.b);
 		 //NOTE: all weights (north/south/east/west) must add up to the frag color coefficient (currently 6.0).
 		 //if the sum of the weights is less than this value, the smoke diffuses rapidly. if they exceed this value, 
 		 //it does not diffuse/expands forever.

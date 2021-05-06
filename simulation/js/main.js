@@ -113,7 +113,8 @@ gui = new dat.GUI();
 		south:0.1,
 		east:0.1,
 		west:0.1,
-		thicc:8.0
+    diffusion:8.0,
+    radius:15.0,
 	};
 	gui.green = 1.0;
 	gui.red=1.0;
@@ -122,7 +123,8 @@ gui = new dat.GUI();
 	gui.south = 0.1;
 	gui.east = 0.1;
 	gui.west = 0.1
-	gui.thicc = 8.0;
+  gui.diffusion = 8.0;
+  gui.radius = 15.0;
 	
 
 
@@ -156,8 +158,12 @@ gui = new dat.GUI();
 		gui.west= newValue;
 		buffer_texture_setup();
 	});
-	gui.add(obj, "thicc").min(1.0).max(50.0).step(1).onChange(function(newValue) {
-		gui.thicc= newValue;
+	gui.add(obj, "diffusion").min(1.0).max(50.0).step(1).onChange(function(newValue) {
+		gui.diffusion= newValue;
+		buffer_texture_setup();
+  });
+  gui.add(obj, "radius").min(1.0).max(50.0).step(1).onChange(function(newValue) {
+		gui.radius= newValue;
 		buffer_texture_setup();
 	});
 	
@@ -184,7 +190,8 @@ function buffer_texture_setup(){
 			south:{type:"f", value: gui.south},
 			east: {type:"f", value:gui.east},
 			west: {type:"f", value:gui.west},
-			thicc: {type:"f", value:gui.thicc}
+      diffusion: {type:"f", value:gui.diffusion},
+      radius: {type:"f", value:gui.radius}
 
 		},
 		fragmentShader: document.getElementById( 'fragShader' ).innerHTML
