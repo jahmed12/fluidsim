@@ -1,26 +1,25 @@
-half2 coords   : WPOS,   // grid coordinates
+uniform vec2 res;
+
+uniform float alpha,
+uniform float rBeta,      // reciprocal beta
             
-out half4 xNew : COLOR,  // result
+uniform sampler2D x;   // x vector (Ax = b)
             
-uniform half alpha,
-uniform half rBeta,      // reciprocal beta
-            
-uniform samplerRECT x,   // x vector (Ax = b)
-            
-uniform samplerRECT b)   // b vector (Ax = b)
+uniform samplerRECT b;   // b vector (Ax = b)
 
 void main() {
+    vec2 pixel = gl_fragCoord.xy / res.xy;
     // left, right, bottom, and top x samples
    
-    half4 xL = h4texRECT(x, coords - half2(1, 0));
-    half4 xR = h4texRECT(x, coords + half2(1, 0));
-    half4 xB = h4texRECT(x, coords - half2(0, 1));
-    half4 xT = h4texRECT(x, coords + half2(0, 1));
+    vec4 xL = texture2D(x, coords - vec2(1 / res.x, 0));
+    vec4 xR = texture2D(x, coords + vec2(1 / res.x, 0));
+    vec4 xB = texture2D(x, coords - vec2(0, 1 / res.y));
+    vec4 xT = texture2D(x, coords + vec2(0, 1 / res.y));
  
     // b sample, from center
    
-    half4 bC = h4texRECT(b, coords);
+    vec4 bC = texture2D(b, coords);
  
     // evaluate Jacobi iteration
-    xNew = (xL + xR + xB + xT + alpha * bC) * rBeta;
+    gl_fragColor = (xL + xR + xB + xT + alpha * bC) * rBeta;
  }

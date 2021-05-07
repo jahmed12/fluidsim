@@ -1,3 +1,174 @@
+// THREE.JS SETUP
+var camera;
+var renderer;
+var gui; 
+var res = new THREE.Vector2(window.innerWidth, window.innerHeight);
+
+function scene_setup(){
+	//This is the basic scene setup
+	scene = new THREE.Scene();
+
+	//Note that we're using an orthographic camera here rather than a prespective
+	camera = new THREE.OrthographicCamera( res.x / - 2, res.x / 2, res.y / 2, res.y / - 2, 1, 10 );
+	// camera = new THREE.OrthographicCamera( -1, 1, 1, -1, 0, 1 );
+	camera.position.z = 2;
+
+	renderer = new THREE.WebGLRenderer();
+	renderer.setSize( res.x, res.y );
+	document.body.appendChild( renderer.domElement );
+}
+
+
+// FIELDS AND SHADERS
+var velocityField = new Field();
+var densityField = new Field();
+var pressureField = new Field();
+
+var advectShader = new Advect(res, advectUniforms);
+var diffuseShader = new Diffuse(res, diffuseUniforms);
+
+
+// INIT GUI STUFF
+gui = new dat.GUI();
+var obj = {
+	red: .5 ,
+	blue: .5,
+	green: .5,
+	north:0.1,
+	south:0.1,
+	east:0.1,
+	west:0.1,
+	thicc:8.0
+};
+gui.green = 1.0;
+gui.red=1.0;
+gui.blue=1.0;
+gui.north = 0.1;
+gui.south = 0.1;
+gui.east = 0.1;
+gui.west = 0.1
+gui.thicc = 8.0;
+
+
+
+gui.add(obj, "red").min(.1).max(1.0).step(.1).onChange(function(newValue) {
+	gui.red= newValue;
+	buffer_texture_setup();
+});
+gui.add(obj, "blue").min(.1).max(1.0).step(.1).onChange(function(newValue) {
+	gui.blue= newValue;
+	buffer_texture_setup();
+
+});
+gui.add(obj, "green").min(.1).max(1.0).step(.1).onChange(function(newValue) {
+	gui.green= newValue;
+	buffer_texture_setup();
+});
+gui.add(obj, "north").min(.05).max(1.0).step(.05).onChange(function(newValue) {
+	gui.north= newValue;
+	buffer_texture_setup();
+});
+gui.add(obj, "south").min(.05).max(1.0).step(.05).onChange(function(newValue) {
+	gui.south= newValue;
+	buffer_texture_setup();
+});
+gui.add(obj, "east").min(.05).max(1.0).step(.05).onChange(function(newValue) {
+	gui.east= newValue;
+	buffer_texture_setup();
+});
+gui.add(obj, "west").min(.05).max(1.0).step(.05).onChange(function(newValue) {
+	gui.west= newValue;
+	buffer_texture_setup();
+});
+gui.add(obj, "thicc").min(1.0).max(50.0).step(1).onChange(function(newValue) {
+	gui.thicc= newValue;
+	buffer_texture_setup();
+});
+	
+	
+
+var bufferScene;
+var textureA;
+var textureB;
+var bufferMaterial;
+var plane;
+var bufferObject;
+var finalMaterial;
+var quad;
+
+
+function buffer_texture_setup(){
+	//Create buffer scene
+	bufferScene = new THREE.Scene();
+	//Create 2 buffer textures
+	// textureA = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.NearestMipmapNearestFilter, magFilter: THREE.NearestMipmapNearestFilter});
+	// textureB = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.NearestMipmapNearestFilter, magFilter: THREE.NearestMipmapNearestFilter} );
+	
+	//Pass textureA to shader
+	bufferMaterial = new THREE.ShaderMaterial( {
+		uniforms: {
+			bufferTexture: { type: "t", value: densityField.textureA },
+			res : {type: 'v2',value:new THREE.Vector2(window.innerWidth,window.innerHeight)},//Keeps the resolution
+			smokeSource: {type:"v3",value:new THREE.Vector3(0,0,0)},
+			time: {type:"f",value:Math.random()*Math.PI*2+Math.PI},
+			red:{type:"f", value: gui.red},
+			blue:{type:"f", value: gui.blue},
+			green:{type:"f", value: gui.green},
+			north:{type:"f", value: gui.north},
+			south:{type:"f", value: gui.south},
+			east: {type:"f", value:gui.east},
+			west: {type:"f", value:gui.west},
+			thicc: {type:"f", value:gui.thicc}
+
+		},
+		fragmentShader: document.getElementById( 'diffuse' ).innerHTML
+	} );
+	plane = new THREE.PlaneBufferGeometry( window.innerWidth, window.innerHeight );
+	bufferObject = new THREE.Mesh( plane, bufferMaterial );
+	bufferScene.add(bufferObject);
+
+	//Draw textureB to screen 
+	finalMaterial =  new THREE.MeshBasicMaterial({map: densityField.textureB});
+	
+	quad = new THREE.Mesh( plane, finalMaterial );
+	scene.add(quad);
+}
+
+//Initialize the Threejs scene
+scene_setup();
+
+//Setup the frame buffer/texture we're going to be rendering to instead of the screen
+buffer_texture_setup();
+
+//Render everything!
+function render() {
+
+	// currently, the following step both adds FORCES and handles DIFFUSION
+	//Draw to textureB (diffuse step)
+	renderer.render(bufferScene,camera,densityField.textureB,true);
+	//Swap textureA and B
+	densityField.swap();
+	// var t = textureA;
+	// textureA = textureB;
+	// textureB = t;
+
+	// velocity -> velocity advection
+	advectShader.apply(1.0, velocityField.textureA, velocityField.textureA, velocityField.textureB);
+	advectShader.swap();
+
+
+
+	quad.material.map = densityField.textureB;
+	bufferMaterial.uniforms.bufferTexture.value = densityField.textureA;
+
+
+	//Finally, draw to the screen
+	renderer.render( scene, camera );
+
+	requestAnimationFrame( render );
+}
+render();
+
 // //@author Omar Shehata. 2015.
 // 		//We are loading the Three.js library from the cdn here: https://cdnjs.com/libraries/three.js/
 // 		var scene;
@@ -78,151 +249,3 @@
 
 // 		}
 // 		render();
-var camera;
-var renderer;
-var gui; 
-
-function scene_setup(){
-	//This is the basic scene setup
-	scene = new THREE.Scene();
-	var width = window.innerWidth;
-	var height = window.innerHeight;
-	//Note that we're using an orthographic camera here rather than a prespective
-	camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
-	camera.position.z = 2;
-
-	renderer = new THREE.WebGLRenderer();
-	renderer.setSize( window.innerWidth, window.innerHeight );
-	document.body.appendChild( renderer.domElement );
-}
-
-var bufferScene;
-var textureA;
-var textureB;
-var bufferMaterial;
-var plane;
-var bufferObject;
-var finalMaterial;
-var quad;
-gui = new dat.GUI();
-	var obj = {
-		red: .5 ,
-		blue: .5,
-		green: .5,
-		north:0.1,
-		south:0.1,
-		east:0.1,
-		west:0.1,
-		thicc:8.0
-	};
-	gui.green = 1.0;
-	gui.red=1.0;
-	gui.blue=1.0;
-	gui.north = 0.1;
-	gui.south = 0.1;
-	gui.east = 0.1;
-	gui.west = 0.1
-	gui.thicc = 8.0;
-	
-
-
-	
-	gui.add(obj, "red").min(.1).max(1.0).step(.1).onChange(function(newValue) {
-		gui.red= newValue;
-		buffer_texture_setup();
-	});
-	gui.add(obj, "blue").min(.1).max(1.0).step(.1).onChange(function(newValue) {
-		gui.blue= newValue;
-		buffer_texture_setup();
-
-	});
-	gui.add(obj, "green").min(.1).max(1.0).step(.1).onChange(function(newValue) {
-		gui.green= newValue;
-		buffer_texture_setup();
-	});
-	gui.add(obj, "north").min(.05).max(1.0).step(.05).onChange(function(newValue) {
-		gui.north= newValue;
-		buffer_texture_setup();
-	});
-	gui.add(obj, "south").min(.05).max(1.0).step(.05).onChange(function(newValue) {
-		gui.south= newValue;
-		buffer_texture_setup();
-	});
-	gui.add(obj, "east").min(.05).max(1.0).step(.05).onChange(function(newValue) {
-		gui.east= newValue;
-		buffer_texture_setup();
-	});
-	gui.add(obj, "west").min(.05).max(1.0).step(.05).onChange(function(newValue) {
-		gui.west= newValue;
-		buffer_texture_setup();
-	});
-	gui.add(obj, "thicc").min(1.0).max(50.0).step(1).onChange(function(newValue) {
-		gui.thicc= newValue;
-		buffer_texture_setup();
-	});
-	
-	
-
-function buffer_texture_setup(){
-	//Create buffer scene
-	
-	bufferScene = new THREE.Scene();
-	//Create 2 buffer textures
-	textureA = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.NearestMipmapNearestFilter, magFilter: THREE.NearestMipmapNearestFilter});
-	textureB = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.NearestMipmapNearestFilter, magFilter: THREE.NearestMipmapNearestFilter} );
-	//Pass textureA to shader
-	bufferMaterial = new THREE.ShaderMaterial( {
-		uniforms: {
-			bufferTexture: { type: "t", value: textureA },
-			res : {type: 'v2',value:new THREE.Vector2(window.innerWidth,window.innerHeight)},//Keeps the resolution
-			smokeSource: {type:"v3",value:new THREE.Vector3(0,0,0)},
-			time: {type:"f",value:Math.random()*Math.PI*2+Math.PI},
-			red:{type:"f", value: gui.red},
-			blue:{type:"f", value: gui.blue},
-			green:{type:"f", value: gui.green},
-			north:{type:"f", value: gui.north},
-			south:{type:"f", value: gui.south},
-			east: {type:"f", value:gui.east},
-			west: {type:"f", value:gui.west},
-			thicc: {type:"f", value:gui.thicc}
-
-		},
-		fragmentShader: document.getElementById( 'fragShader' ).innerHTML
-	} );
-	plane = new THREE.PlaneBufferGeometry( window.innerWidth, window.innerHeight );
-	bufferObject = new THREE.Mesh( plane, bufferMaterial );
-	bufferScene.add(bufferObject);
-
-	//Draw textureB to screen 
-	finalMaterial =  new THREE.MeshBasicMaterial({map: textureB});
-	
-	quad = new THREE.Mesh( plane, finalMaterial );
-	scene.add(quad);
-}
-
-//Initialize the Threejs scene
-scene_setup();
-
-//Setup the frame buffer/texture we're going to be rendering to instead of the screen
-buffer_texture_setup();
-
-//Render everything!
-function render() {
-
-	requestAnimationFrame( render );
-
-	//Draw to textureB
-	renderer.render(bufferScene,camera,textureB,true);
-	
-	//Swap textureA and B
-	var t = textureA;
-	textureA = textureB;
-	textureB = t;
-	quad.material.map = textureB;
-	bufferMaterial.uniforms.bufferTexture.value = textureA;
-
-
-	//Finally, draw to the screen
-	renderer.render( scene, camera );
-}
-render();

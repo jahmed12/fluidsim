@@ -11,7 +11,7 @@
 <body>
 	<!-- <script src="js/mouse.js"></script> -->
 		
-	<script id="fragShader">
+	<script id="diffuse">
 		uniform vec2 res;//The width and height of our screen
 		uniform sampler2D bufferTexture;//Our input texture
 		uniform vec3 smokeSource;//The x,y are the posiiton. The z is the power/density
@@ -24,38 +24,38 @@
 		uniform float west;
 		uniform float thicc;
 		void main() {
-	        vec2 pixel = gl_FragCoord.xy / res.xy;
-	        gl_FragColor = texture2D( bufferTexture, pixel );
+			vec2 pixel = gl_FragCoord.xy / res.xy;
+			gl_FragColor = texture2D( bufferTexture, pixel );
 			
 
-	        //Get the distance of the current pixel from the smoke source
-	        float dist = distance(smokeSource.xy,gl_FragCoord.xy);
+			//Get the distance of the current pixel from the smoke source
+			float dist = distance(smokeSource.xy,gl_FragCoord.xy);
 			//Generate smoke when mouse is pressed
 			
 			gl_FragColor.r += red*smokeSource.z * max(15.0-dist,0.0);
 			gl_FragColor.g += green*smokeSource.z * max(15.0-dist,0.0);
 			gl_FragColor.b += blue*smokeSource.z * max(15.0-dist,0.0);
-		
-  
-     //Smoke diffuse
-	        float xPixel = 1.0/res.x;//The size of a single pixel
-	        float yPixel = 1.0/res.y;
-	        vec4 rightColor = texture2D(bufferTexture,vec2(pixel.x+xPixel,pixel.y));
-	        vec4 leftColor = texture2D(bufferTexture,vec2(pixel.x-xPixel,pixel.y));
-	        vec4 upColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y+yPixel));
-	        vec4 downColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y-yPixel));
-//Diffuse equation
-	       	float factor1 = thicc * 0.016 * (leftColor.r*east+ rightColor.r*west + downColor.r*north + upColor.r*south  - (east+north+south+west)*gl_FragColor.r);
+
+
+		//Smoke diffuse
+			float xPixel = 1.0/res.x;//The size of a single pixel
+			float yPixel = 1.0/res.y;
+			vec4 rightColor = texture2D(bufferTexture,vec2(pixel.x+xPixel,pixel.y));
+			vec4 leftColor = texture2D(bufferTexture,vec2(pixel.x-xPixel,pixel.y));
+			vec4 upColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y+yPixel));
+			vec4 downColor = texture2D(bufferTexture,vec2(pixel.x,pixel.y-yPixel));
+		//Diffuse equation
+			float factor1 = thicc * 0.016 * (leftColor.r*east+ rightColor.r*west + downColor.r*north + upColor.r*south  - (east+north+south+west)*gl_FragColor.r);
 			float factor2 = thicc * 0.016 * (leftColor.g*east + rightColor.g*west + downColor.g*north + upColor.g*south- (east+north+south+west)*gl_FragColor.g);
 			float factor3 = thicc* 0.016 * (leftColor.b*east + rightColor.b*west + downColor.b*north + upColor.b*south - (east+north+south+west)*gl_FragColor.b);
-		 //NOTE: all weights (north/south/east/west) must add up to the frag color coefficient (currently 6.0).
-		 //if the sum of the weights is less than this value, the smoke diffuses rapidly. if they exceed this value, 
-		 //it does not diffuse/expands forever.
-		 //
+			//NOTE: all weights (north/south/east/west) must add up to the frag color coefficient (currently 6.0).
+			//if the sum of the weights is less than this value, the smoke diffuses rapidly. if they exceed this value, 
+			//it does not diffuse/expands forever.
+			//
 
 
-	        //Account for low precision of texels
-	        float minimum = 0.003;
+			//Account for low precision of texels
+			float minimum = 0.003;
 			if(factor1 >= -minimum && factor1 < 0.0) factor1 = -minimum;
 			if(factor2 >= -minimum && factor2 < 0.0) factor2 = -minimum;
 			if(factor3 >= -minimum && factor3 < 0.0) factor3 = -minimum;
@@ -63,14 +63,52 @@
 			gl_FragColor.r += factor1;
 			gl_FragColor.g += factor2;
 			gl_FragColor.b += factor3;
-		 }
+			
+		}
+	</script>
+		
+	<script id="advect">
+		precision mediump float;
+		uniform vec2 res;//The width and height of our screen
+		uniform sampler2D velocityField;//Our input texture
+		uniform sampler2D advectionField;
+		uniform float dissipation;
+
+		vec2 bilerp(sampler2D texture, vec2 p)
+		{
+			// add 0.5 for center of pixel
+			float s = p.x - (floor(p.x - 0.5) + 0.5);
+			float t = p.y - (floor(p.y - 0.5) + 0.5);
+
+			vec4 uv;
+			uv.xy = (floor(p - 0.5) + 0.5) / res.xy;
+			uv.zw= (floor(p - 0.5) + 1.5) / res.xy;
+
+			vec2 u00 = texture2D(texture, uv.xy).xy;
+			vec2 u10 = texture2D(texture, uv.zy).xy;
+
+			vec2 u0 = mix(u00, u10, s);
+
+			vec2 u01 = texture2D(texture, uv.xw).xy;
+			vec2 u11 = texture2D(texture, uv.zw).xy;
+
+			vec2 u1 =  mix(u01, u11, s);
+
+			return mix(u0, u1, t);
+		}
+
+		void main() {
+			vec2 pixel = gl_FragCoord.xy / res.xy;
+			vec2 p = gl_FragCoord.xy - texture2D(velocityField, pixel).xy;
+			gl_FragColor = vec4(dissipation * bilerp(advectionField, p), 0.0, 1.0);
+		}
+
 	</script>
 
 	<script src="js/field.js"></script>
-		
-	<script id="advectShader" src="js/shaders/advect.js"></script>
+	<script src="js/shaders.js"></script>
+	<script src="js/uniforms.js"></script>
 
-	<script src="js/init.js"></script>
 	<script src="js/main.js"></script>
 
 	<script src="js/mouse.js"></script>
